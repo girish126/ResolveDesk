@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { ImagePlus, LoaderCircle, Send, X } from "lucide-react";
+import { Camera, ImagePlus, LoaderCircle, Send, X } from "lucide-react";
+import { prepareCameraImage } from "@/app/lib/prepareCameraImage";
 import type {
   TicketFormData,
   TicketImageAttachment,
@@ -72,6 +73,7 @@ export default function TicketForm({
   loading = false,
 }: TicketFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const imagePreviewsRef = useRef(new Set<string>());
 
   const [title, setTitle] = useState("");
@@ -93,8 +95,10 @@ export default function TicketForm({
     [],
   );
 
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(event.target.files ?? []);
+    const isCameraCapture =
+      event.currentTarget.dataset.cameraCapture === "true";
     event.target.value = "";
 
     if (selectedFiles.length === 0) return;
@@ -111,8 +115,24 @@ export default function TicketForm({
 
     const acceptedImages: SelectedImage[] = [];
     const errors: string[] = [];
+    let filesToAdd = selectedFiles;
 
-    for (const file of selectedFiles) {
+    if (isCameraCapture) {
+      try {
+        filesToAdd = await Promise.all(
+          selectedFiles.map(prepareCameraImage),
+        );
+      } catch (reason) {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Unable to process the captured photo.",
+        );
+        return;
+      }
+    }
+
+    for (const file of filesToAdd) {
       if (images.length + acceptedImages.length >= MAX_IMAGES) {
         errors.push(`You can attach a maximum of ${MAX_IMAGES} images.`);
         break;
@@ -415,16 +435,38 @@ export default function TicketForm({
               You can select multiple images at the same time
             </span>
           </label>
-          <input
-            ref={fileInputRef}
-            id="ticket-images"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onChange={handleImageChange}
-            disabled={formBusy || images.length >= MAX_IMAGES}
-            className="sr-only"
-          />
+          <div className="sr-only">
+            <input
+              ref={fileInputRef}
+              id="ticket-images"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={handleImageChange}
+              disabled={formBusy || images.length >= MAX_IMAGES}
+            />
+            <input
+              ref={cameraInputRef}
+              id="ticket-camera"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              data-camera-capture="true"
+              onChange={handleImageChange}
+              disabled={formBusy || images.length >= MAX_IMAGES}
+            />
+          </div>
+          <label
+            htmlFor="ticket-camera"
+            className={`mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+              formBusy || images.length >= MAX_IMAGES
+                ? "cursor-not-allowed border-slate-200 text-slate-400"
+                : "cursor-pointer border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+            }`}
+          >
+            <Camera size={17} />
+            Capture with camera
+          </label>
 
           {images.length > 0 && (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">

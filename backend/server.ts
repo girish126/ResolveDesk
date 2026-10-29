@@ -1,5 +1,6 @@
 
 import "dotenv/config";
+import { createServer } from "node:http";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -13,8 +14,10 @@ import publicDashboardRouter from "./modules/dashboard/public.routes.js";
 import userRouter from "./modules/user/user.routes.js";
 import engineerRouter from "./modules/engineer/engineer.routes.js";
 import adminSparePartRouter from "./modules/Admin/spare-part.routes.js";
+import notificationRouter from "./modules/notifications/notification.routes.js";
 
 import { errorHandler } from "./middleware/errorHandler.js";
+import { initializeNotificationSocket } from "./src/socket/notification.socket.js";
 
 const app = express();
 
@@ -118,6 +121,11 @@ app.use("/api/user", userRouter);
 app.use("/api/engineer", engineerRouter);
 
 // --------------------------------------------------
+// Authenticated user notifications
+// --------------------------------------------------
+app.use("/api/notifications", notificationRouter);
+
+// --------------------------------------------------
 // Admin spare-part APIs
 // Keep before the general admin router.
 // --------------------------------------------------
@@ -147,7 +155,10 @@ app.use(errorHandler);
 // --------------------------------------------------
 // Start server on all network interfaces
 // --------------------------------------------------
-const server = app.listen(PORT, HOST, () => {
+const server = createServer(app);
+initializeNotificationSocket(server, allowedOrigins);
+
+server.listen(PORT, HOST, () => {
   console.log(`ResolveDesk API listening on port ${PORT}`);
   console.log(`Local API: http://localhost:${PORT}`);
   console.log(`LAN API: http://192.168.1.19:${PORT}`);

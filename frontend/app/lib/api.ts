@@ -8,7 +8,11 @@ export function setAccessToken(token: string | null) {
   accessToken = token;
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function getAccessToken(): Promise<string | null> {
+  return accessToken ?? refreshAccessToken();
+}
+
+export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshRequest) {
     refreshRequest = fetch(
       `${API_BASE_URL.replace(/\/$/, "")}/auth/refresh`,

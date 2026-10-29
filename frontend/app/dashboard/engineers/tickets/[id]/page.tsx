@@ -3,11 +3,12 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { ImagePlus, ShieldCheck, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, ImagePlus, ShieldCheck, X } from "lucide-react";
 
 import { sparePartService } from "@/app/services/spare-part.service";
 import { engineerService } from "@/app/services/engineer.service";
+import { prepareCameraImage } from "@/app/lib/prepareCameraImage";
 import TicketStatusBadge from "@/app/components/tickets/TicketStatusBadge";
 import TicketAttachments from "@/app/components/tickets/TicketAttachments";
 
@@ -68,6 +69,7 @@ export default function EngineerTicketDetailPage() {
   const [note, setNote] = useState("");
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const imagePreviewUrls = useRef(new Set<string>());
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -127,25 +129,43 @@ export default function EngineerTicketDetailPage() {
     };
   }, [id]);
 
-  // Release browser memory used by local image previews.
-  useEffect(() => {
-    return () => {
-      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [imagePreviews]);
+  useEffect(
+    () => () => {
+      imagePreviewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
 
-  function handleImageSelection(
+  async function handleImageSelection(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
     const files = Array.from(event.target.files ?? []);
+    const isCameraCapture =
+      event.currentTarget.dataset.cameraCapture === "true";
+    event.target.value = "";
 
-    if (files.length > MAX_IMAGES) {
+    if (files.length === 0) return;
+
+    if (selectedImages.length + files.length > MAX_IMAGES) {
       setError(`Choose no more than ${MAX_IMAGES} images.`);
-      event.target.value = "";
       return;
     }
 
-    const invalidFile = files.find(
+    let filesToAdd = files;
+    if (isCameraCapture) {
+      try {
+        filesToAdd = await Promise.all(files.map(prepareCameraImage));
+      } catch (reason) {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Unable to process the captured photo.",
+        );
+        return;
+      }
+    }
+
+    const invalidFile = filesToAdd.find(
       (file) =>
         !ALLOWED_IMAGE_TYPES.includes(file.type) ||
         file.size > MAX_IMAGE_SIZE
@@ -155,31 +175,38 @@ export default function EngineerTicketDetailPage() {
       setError(
         "Only JPG, PNG, or WebP images up to 5 MB each are allowed."
       );
-      event.target.value = "";
       return;
     }
 
     setError("");
-
-    setImagePreviews(files.map((file) => URL.createObjectURL(file)));
-    setSelectedImages(files);
+    const newPreviews = filesToAdd.map((file) => {
+      const url = URL.createObjectURL(file);
+      imagePreviewUrls.current.add(url);
+      return url;
+    });
+    setImagePreviews((current) => [...current, ...newPreviews]);
+    setSelectedImages((current) => [...current, ...filesToAdd]);
   }
 
   function removeImage(index: number) {
+    const preview = imagePreviews[index];
+
+    if (preview) {
+      URL.revokeObjectURL(preview);
+      imagePreviewUrls.current.delete(preview);
+    }
+
     setImagePreviews((current) =>
       current.filter((_, i) => i !== index)
     );
-
     setSelectedImages((current) =>
       current.filter((_, i) => i !== index)
     );
 
-    const input = document.getElementById(
-      "repair-images"
-    ) as HTMLInputElement | null;
-
-    // Allow the same file to be selected again.
-    if (input) input.value = "";
+    ["repair-images", "repair-camera"].forEach((inputId) => {
+      const input = document.getElementById(inputId) as HTMLInputElement | null;
+      if (input) input.value = "";
+    });
   }
 
   async function submitPartRequest(
@@ -271,6 +298,8 @@ export default function EngineerTicketDetailPage() {
 
       setTicket(updatedTicket);
       setNote("");
+      imagePreviewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      imagePreviewUrls.current.clear();
       setSelectedImages([]);
       setImagePreviews([]);
     } catch (reason: unknown) {
@@ -453,14 +482,41 @@ export default function EngineerTicketDetailPage() {
                   </span>
                 </label>
 
-                <input
-                  id="repair-images"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  className="sr-only"
-                  onChange={handleImageSelection}
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    id="repair-images"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    disabled={saving || selectedImages.length >= MAX_IMAGES}
+                    className="sr-only"
+                    onChange={handleImageSelection}
+                  />
+                  <input
+                    id="repair-camera"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    data-camera-capture="true"
+                    disabled={saving || selectedImages.length >= MAX_IMAGES}
+                    className="sr-only"
+                    onChange={handleImageSelection}
+                  />
+                  <label
+                    htmlFor="repair-camera"
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                      saving || selectedImages.length >= MAX_IMAGES
+                        ? "cursor-not-allowed border-neutral-700 text-neutral-500"
+                        : "cursor-pointer border-neutral-700 text-white hover:bg-neutral-900"
+                    }`}
+                  >
+                    <Camera size={16} />
+                    Capture photo
+                  </label>
+                  <span className="text-xs text-neutral-400">
+                    {selectedImages.length}/{MAX_IMAGES} photos selected
+                  </span>
+                </div>
 
                 {imagePreviews.length > 0 && (
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">

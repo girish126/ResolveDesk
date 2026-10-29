@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ShieldCheck, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Camera, ShieldCheck, X } from "lucide-react";
 
 import TicketStatusBadge from "@/app/components/tickets/TicketStatusBadge";
 import TicketAttachments from "@/app/components/tickets/TicketAttachments";
 import { engineerService } from "@/app/services/engineer.service";
+import { prepareCameraImage } from "@/app/lib/prepareCameraImage";
 import type { Ticket, TicketImageAttachment } from "@/app/types/ticket";
 
 const MAX_IMAGES = 5;
@@ -46,6 +47,7 @@ export default function EngineerTicketsPage() {
   const [imagePreviews, setImagePreviews] = useState<
     Record<string, string[]>
   >({});
+  const imagePreviewUrls = useRef(new Set<string>());
 
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
@@ -70,13 +72,12 @@ export default function EngineerTicketsPage() {
     void Promise.resolve().then(loadTickets);
   }, [loadTickets]);
 
-  useEffect(() => {
-    return () => {
-      Object.values(imagePreviews)
-        .flat()
-        .forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [imagePreviews]);
+  useEffect(
+    () => () => {
+      imagePreviewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
 
   async function startWork(ticket: Ticket) {
     setSavingId(ticket.id);
@@ -101,19 +102,39 @@ export default function EngineerTicketsPage() {
     }
   }
 
-  function handleImageSelection(
+  async function handleImageSelection(
     ticketId: string,
     event: React.ChangeEvent<HTMLInputElement>
   ) {
     const files = Array.from(event.target.files ?? []);
+    const isCameraCapture =
+      event.currentTarget.dataset.cameraCapture === "true";
+    event.target.value = "";
 
-    if (files.length > MAX_IMAGES) {
+    if (files.length === 0) return;
+
+    const currentFiles = selectedImages[ticketId] ?? [];
+
+    if (currentFiles.length + files.length > MAX_IMAGES) {
       setError(`Choose no more than ${MAX_IMAGES} images.`);
-      event.target.value = "";
       return;
     }
 
-    const invalidFile = files.find(
+    let filesToAdd = files;
+    if (isCameraCapture) {
+      try {
+        filesToAdd = await Promise.all(files.map(prepareCameraImage));
+      } catch (reason) {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Unable to process the captured photo.",
+        );
+        return;
+      }
+    }
+
+    const invalidFile = filesToAdd.find(
       (file) =>
         !ALLOWED_IMAGE_TYPES.includes(file.type) ||
         file.size > MAX_IMAGE_SIZE
@@ -123,28 +144,23 @@ export default function EngineerTicketsPage() {
       setError(
         "Only JPG, PNG, or WebP images up to 5 MB each are allowed."
       );
-      event.target.value = "";
       return;
     }
 
     setError("");
-
-    setImagePreviews((current) => {
-      current[ticketId]?.forEach((url) =>
-        URL.revokeObjectURL(url)
-      );
-
-      return {
-        ...current,
-        [ticketId]: files.map((file) =>
-          URL.createObjectURL(file)
-        ),
-      };
+    const newPreviews = filesToAdd.map((file) => {
+      const url = URL.createObjectURL(file);
+      imagePreviewUrls.current.add(url);
+      return url;
     });
 
     setSelectedImages((current) => ({
       ...current,
-      [ticketId]: files,
+      [ticketId]: [...(current[ticketId] ?? []), ...filesToAdd],
+    }));
+    setImagePreviews((current) => ({
+      ...current,
+      [ticketId]: [...(current[ticketId] ?? []), ...newPreviews],
     }));
   }
 
@@ -153,6 +169,7 @@ export default function EngineerTicketsPage() {
 
     if (preview) {
       URL.revokeObjectURL(preview);
+      imagePreviewUrls.current.delete(preview);
     }
 
     setImagePreviews((current) => ({
@@ -169,11 +186,12 @@ export default function EngineerTicketsPage() {
       ),
     }));
 
-    const input = document.getElementById(
-      `repair-images-${ticketId}`
-    ) as HTMLInputElement | null;
-
-    if (input) input.value = "";
+    [`repair-images-${ticketId}`, `repair-camera-${ticketId}`].forEach(
+      (inputId) => {
+        const input = document.getElementById(inputId) as HTMLInputElement | null;
+        if (input) input.value = "";
+      },
+    );
   }
 
   async function submitResponse(ticket: Ticket) {
@@ -208,11 +226,12 @@ export default function EngineerTicketsPage() {
         [ticket.id]: "",
       }));
 
+      const submittedPreviews = imagePreviews[ticket.id] ?? [];
+      submittedPreviews.forEach((url) => {
+        URL.revokeObjectURL(url);
+        imagePreviewUrls.current.delete(url);
+      });
       setImagePreviews((current) => {
-        current[ticket.id]?.forEach((url) =>
-          URL.revokeObjectURL(url)
-        );
-
         return {
           ...current,
           [ticket.id]: [],
@@ -400,19 +419,55 @@ export default function EngineerTicketsPage() {
                       Attach repair photos (optional)
                     </label>
 
-                    <input
-                      id={`repair-images-${ticket.id}`}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      multiple
-                      onChange={(event) =>
-                        handleImageSelection(ticket.id, event)
-                      }
-                      className="block w-full max-w-xs cursor-pointer rounded-lg border border-slate-300 bg-white text-sm text-slate-700 file:mr-3 file:cursor-pointer file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200"
-                    />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <input
+                        id={`repair-images-${ticket.id}`}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        disabled={
+                          (selectedImages[ticket.id]?.length ?? 0) >=
+                          MAX_IMAGES
+                        }
+                        onChange={(event) =>
+                          handleImageSelection(ticket.id, event)
+                        }
+                        className="block w-full max-w-xs cursor-pointer rounded-lg border border-slate-300 bg-white text-sm text-slate-700 file:mr-3 file:cursor-pointer file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 disabled:opacity-50"
+                      />
+                      <input
+                        id={`repair-camera-${ticket.id}`}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        data-camera-capture="true"
+                        disabled={
+                          (selectedImages[ticket.id]?.length ?? 0) >=
+                          MAX_IMAGES
+                        }
+                        onChange={(event) =>
+                          handleImageSelection(ticket.id, event)
+                        }
+                        className="sr-only"
+                      />
+                      <label
+                        htmlFor={`repair-camera-${ticket.id}`}
+                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                          (selectedImages[ticket.id]?.length ?? 0) >=
+                          MAX_IMAGES
+                            ? "cursor-not-allowed border-slate-200 text-slate-400"
+                            : "cursor-pointer border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <Camera size={16} />
+                        Capture photo
+                      </label>
+                    </div>
 
                     <p className="mt-1 text-xs text-slate-500">
                       JPG, PNG, or WebP · Maximum 5 images, 5 MB each
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {selectedImages[ticket.id]?.length ?? 0}/{MAX_IMAGES} photos selected
                     </p>
 
                     {(imagePreviews[ticket.id]?.length ?? 0) > 0 && (

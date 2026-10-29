@@ -81,7 +81,10 @@ export default function DashboardShell({
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="min-h-screen lg:pl-64">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <Header
+          user={user}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
 
         <div className="border-b border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
           <p className="text-sm text-slate-500">

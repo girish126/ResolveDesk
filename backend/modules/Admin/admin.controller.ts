@@ -1,7 +1,13 @@
 
 import type { Request, Response } from "express";
+import { NotificationType } from "../../generated/prisma/client.js";
 import { prisma } from "../../src/config/prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import {
+  createNotifications,
+  emitNotifications,
+  type NotificationPayload,
+} from "../notifications/notification.service.js";
 
 export const getDashboardSummary = asyncHandler(
   async (_req: Request, res: Response) => {
@@ -165,6 +171,7 @@ export const assignTicket = asyncHandler(
     }
 
     const admin = res.locals.user as { id: string };
+    let notifications: NotificationPayload[] = [];
 
     const updatedTicket = await prisma.$transaction(async (tx) => {
       const updated = await tx.ticket.update({
@@ -199,8 +206,18 @@ export const assignTicket = asyncHandler(
         },
       });
 
+      notifications = await createNotifications(tx, {
+        recipientIds: [employee.id, updated.requesterId],
+        ticketId: updated.id,
+        type: NotificationType.TICKET_ASSIGNED,
+        title: "Ticket assigned",
+        message: `Complaint ${updated.ticketNo} has been assigned to ${employee.name}.`,
+      });
+
       return updated;
     });
+
+    emitNotifications(notifications);
 
     res.json({
       success: true,

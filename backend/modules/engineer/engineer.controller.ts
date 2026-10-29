@@ -1,6 +1,7 @@
 
 import type { Request, Response } from "express";
 import {
+  NotificationType,
   TicketHistoryAction,
   TicketStatus,
   SparePartRequestStatus,
@@ -8,6 +9,11 @@ import {
 import { prisma } from "../../src/config/prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { parseImageAttachments } from "../../utils/imageAttachments.js";
+import {
+  createNotifications,
+  emitNotifications,
+  type NotificationPayload,
+} from "../notifications/notification.service.js";
 
 const MAX_RESPONSE_IMAGE_COUNT = 5;
 const MAX_RESPONSE_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -119,7 +125,7 @@ export const startTicketWork = asyncHandler(
         id: ticketId,
         employeeId: engineer.id,
       },
-      select: { id: true, status: true },
+      select: { id: true, status: true, requesterId: true, ticketNo: true },
     });
 
     if (!ticket) {
@@ -138,6 +144,7 @@ export const startTicketWork = asyncHandler(
       return;
     }
 
+    let notifications: NotificationPayload[] = [];
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.ticket.update({
         where: { id: ticket.id },
@@ -169,8 +176,18 @@ export const startTicketWork = asyncHandler(
         },
       });
 
+      notifications = await createNotifications(tx, {
+        recipientIds: [ticket.requesterId],
+        ticketId: ticket.id,
+        type: NotificationType.STATUS_CHANGED,
+        title: "Work started",
+        message: `An engineer has started working on complaint ${ticket.ticketNo}.`,
+      });
+
       return result;
     });
+
+    emitNotifications(notifications);
 
     res.status(200).json({
       success: true,
@@ -219,7 +236,12 @@ export const submitTicketResponse = asyncHandler(
         id: ticketId,
         employeeId: engineer.id,
       },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        requesterId: true,
+        ticketNo: true,
+      },
     });
 
     if (!ticket) {
@@ -238,6 +260,7 @@ export const submitTicketResponse = asyncHandler(
       return;
     }
 
+    let notifications: NotificationPayload[] = [];
     const updated = await prisma.$transaction(async (tx) => {
       await tx.ticketComment.create({
         data: {
@@ -285,8 +308,18 @@ export const submitTicketResponse = asyncHandler(
         },
       });
 
+      notifications = await createNotifications(tx, {
+        recipientIds: [ticket.requesterId],
+        ticketId: ticket.id,
+        type: NotificationType.TICKET_RESOLVED,
+        title: "Complaint resolved",
+        message: `Complaint ${ticket.ticketNo} has been resolved by the engineer.`,
+      });
+
       return result;
     });
+
+    emitNotifications(notifications);
 
     res.status(200).json({
       success: true,

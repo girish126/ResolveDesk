@@ -4,8 +4,18 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "../../src/config/prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { AuthError } from "../Auth/auth.service.js";
-import { TicketPriority, TicketStatus, TicketHistoryAction } from "../../generated/prisma/client.js";
+import {
+  NotificationType,
+  TicketPriority,
+  TicketStatus,
+  TicketHistoryAction,
+} from "../../generated/prisma/client.js";
 import { parseImageAttachments } from "../../utils/imageAttachments.js";
+import {
+  createNotifications,
+  emitNotifications,
+  type NotificationPayload,
+} from "../notifications/notification.service.js";
 
 const MAX_COMPLAINT_IMAGE_COUNT = 5;
 const MAX_COMPLAINT_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -81,6 +91,7 @@ export const createTicket = asyncHandler(
       return;
     }
 
+    let notifications: NotificationPayload[] = [];
     const ticket = await prisma.$transaction(async (tx) => {
       const created = await tx.ticket.create({
         data: {
@@ -105,8 +116,18 @@ export const createTicket = asyncHandler(
         },
       });
 
+      notifications = await createNotifications(tx, {
+        recipientIds: [user.id],
+        ticketId: created.id,
+        type: NotificationType.TICKET_CREATED,
+        title: "Complaint submitted",
+        message: `Your complaint ${created.ticketNo} was submitted successfully.`,
+      });
+
       return created;
     });
+
+    emitNotifications(notifications);
 
     res.status(201).json({
       success: true,
