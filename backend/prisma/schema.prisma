@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  EMPLOYEE
+  ENGINEER
+}
+
+enum TicketStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketHistoryAction {
+  CREATED
+  ASSIGNED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  COMMENT_ADDED
+  UPDATED
+}
+
+enum SparePartRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  TICKET_CREATED
+  TICKET_ASSIGNED
+  STATUS_CHANGED
+  NEW_COMMENT
+  TICKET_RESOLVED
+  FEEDBACK_RECEIVED
+  SYSTEM
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(120)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(USER)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  createdTickets            Ticket[]           @relation("TicketRequester")
+  assignedTickets           Ticket[]           @relation("TicketEmployee")
+  comments                  TicketComment[]
+  historyActions            TicketHistory[]    @relation("HistoryActor")
+  notifications             Notification[]
+  feedbackGiven             Feedback[]         @relation("FeedbackAuthor")
+  refreshTokens             RefreshToken[]
+  sparePartRequests         SparePartRequest[] @relation("SparePartRequester")
+  reviewedSparePartRequests SparePartRequest[] @relation("SparePartReviewer")
+
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Ticket {
+  id          String         @id @default(uuid()) @db.Uuid
+  ticketNo    String         @unique @map("ticket_no") @db.VarChar(30)
+  title       String         @db.VarChar(150)
+  description String
+  category    String         @db.VarChar(80)
+  priority    TicketPriority @default(MEDIUM)
+  status      TicketStatus   @default(OPEN)
+
+  requesterId String  @map("requester_id") @db.Uuid
+  employeeId  String? @map("employee_id") @db.Uuid
+
+  attachments Json      @default("[]") @db.JsonB
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  resolvedAt  DateTime? @map("resolved_at")
+
+  requester         User               @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  employee          User?              @relation("TicketEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
+  comments          TicketComment[]
+  history           TicketHistory[]
+  notifications     Notification[]
+  feedback          Feedback?
+  sparePartRequests SparePartRequest[]
+
+  @@index([requesterId, createdAt])
+  @@index([employeeId, status])
+  @@index([status, priority])
+  @@index([category])
+  @@index([createdAt])
+  @@map("tickets")
+}
+
+model SparePartRequest {
+  id           String                 @id @default(uuid()) @db.Uuid
+  engineerId   String                 @map("engineer_id") @db.Uuid
+  ticketId     String                 @map("ticket_id") @db.Uuid
+  partName     String                 @map("part_name") @db.VarChar(150)
+  quantity     Int
+  reason       String
+  status       SparePartRequestStatus @default(PENDING)
+  adminNote    String?                @map("admin_note")
+  reviewedById String?                @map("reviewed_by_id") @db.Uuid
+  reviewedAt   DateTime?              @map("reviewed_at")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+
+  engineer   User   @relation("SparePartRequester", fields: [engineerId], references: [id], onDelete: Cascade)
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  reviewedBy User?  @relation("SparePartReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([engineerId, createdAt])
+  @@index([ticketId])
+  @@index([status, createdAt])
+  @@map("spare_part_requests")
+}
+
+model TicketComment {
+  id          String   @id @default(uuid()) @db.Uuid
+  ticketId    String   @map("ticket_id") @db.Uuid
+  authorId    String   @map("author_id") @db.Uuid
+  message     String
+  isInternal  Boolean  @default(false) @map("is_internal")
+  attachments Json     @default("[]") @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, createdAt])
+  @@index([authorId])
+  @@map("ticket_comments")
+}
+
+model TicketHistory {
+  id          String              @id @default(uuid()) @db.Uuid
+  ticketId    String              @map("ticket_id") @db.Uuid
+  actorId     String?             @map("actor_id") @db.Uuid
+  action      TicketHistoryAction
+  oldStatus   TicketStatus?       @map("old_status")
+  newStatus   TicketStatus?       @map("new_status")
+  oldPriority TicketPriority?     @map("old_priority")
+  newPriority TicketPriority?     @map("new_priority")
+  details     String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User?  @relation("HistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+  @@index([actorId])
+  @@map("ticket_history")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  ticketId  String?          @map("ticket_id") @db.Uuid
+  type      NotificationType @default(SYSTEM)
+  title     String           @db.VarChar(150)
+  message   String
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([ticketId])
+  @@map("notifications")
+}
+
+model Feedback {
+  id        String   @id @default(uuid()) @db.Uuid
+  ticketId  String   @unique @map("ticket_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User   @relation("FeedbackAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([authorId, createdAt])
+  @@map("feedback")
+}
+
+model RefreshToken {
+  id                  String    @id @default(uuid()) @db.Uuid
+  tokenHash           String    @unique @map("token_hash") @db.VarChar(64)
+  familyId            String    @map("family_id") @db.Uuid
+  userId              String    @map("user_id") @db.Uuid
+  expiresAt           DateTime  @map("expires_at")
+  revokedAt           DateTime? @map("revoked_at")
+  replacedByTokenHash String?   @map("replaced_by_token_hash") @db.VarChar(64)
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
