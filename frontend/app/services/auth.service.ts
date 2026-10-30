@@ -6,63 +6,63 @@ import type {
   LoginPayload,
   RegisterPayload,
 } from "@/app/types/auth";
-import { createUserWithEmailAndPassword, deleteUser, signOut, updateProfile } from "firebase/auth";
-import { auth } from "@/app/lib/firebase";
+
+function normalizeUser(user: AuthUser): AuthUser {
+  return {
+    ...user,
+    role: user.role === "EMPLOYEE" ? "ENGINEER" : user.role,
+  };
+}
 
 export const authService = {
   async login(payload: LoginPayload) {
     const response = await apiRequest<AuthResponse>("/auth/login", {
       method: "POST",
-      body: payload,
+      body: {
+        ...payload,
+        email: payload.email.trim().toLowerCase(),
+      },
     });
+
     setAccessToken(response.accessToken ?? null);
+
     return {
       ...response,
-      user: {
-        ...response.user,
-        role: response.user.role === "EMPLOYEE" ? "ENGINEER" : response.user.role,
-      },
+      user: normalizeUser(response.user),
     };
   },
 
   async register(payload: RegisterPayload) {
-    const credential = await createUserWithEmailAndPassword(
-      auth,
-      payload.email.trim().toLowerCase(),
-      payload.password,
-    );
-    try {
-      await updateProfile(credential.user, { displayName: payload.name.trim() });
-      const response = await apiRequest<AuthResponse>("/auth/register", {
-        method: "POST",
-        body: payload,
-      });
-      await signOut(auth);
-      return response;
-    } catch (error) {
-      await deleteUser(credential.user).catch(() => undefined);
-      await signOut(auth).catch(() => undefined);
-      throw error;
-    }
+    const response = await apiRequest<AuthResponse>("/auth/register", {
+      method: "POST",
+      body: {
+        ...payload,
+        name: payload.name.trim(),
+        email: payload.email.trim().toLowerCase(),
+      },
+    });
+
+    return {
+      ...response,
+      user: normalizeUser(response.user),
+    };
   },
 
   async me() {
     const response = await apiRequest<{ user: AuthUser }>("/auth/me", {
       method: "GET",
     });
+
     return {
       ...response,
-      user: {
-        ...response.user,
-        role: response.user.role === "EMPLOYEE" ? "ENGINEER" : response.user.role,
-      },
+      user: normalizeUser(response.user),
     };
   },
 
   async logout() {
     try {
       return await apiRequest<{ message?: string }>("/auth/logout", {
-      method: "POST",
+        method: "POST",
       });
     } finally {
       setAccessToken(null);

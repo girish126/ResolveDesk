@@ -41,6 +41,7 @@ For production, compile and start the server with:
 
 ```powershell
 cd backend
+npx prisma migrate deploy
 npm run build
 npm start
 ```

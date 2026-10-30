@@ -13,6 +13,7 @@ import {
 import useDemoSession from "@/app/hooks/useDemoSession";
 import useNotifications from "@/app/hooks/useNotifications";
 import type { NotificationItem } from "@/app/services/notification.service";
+import { formatDateTime } from "@/app/lib/utils";
 
 const notificationIcons = {
   TICKET_CREATED: ClipboardList,
@@ -151,7 +152,7 @@ export default function NotificationsPage() {
                     <div className="mt-3 flex flex-wrap items-center gap-4">
                       <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
                         <Clock3 size={13} />
-                        {new Date(notification.createdAt).toLocaleString()}
+                        {formatDateTime(notification.createdAt)}
                       </span>
                       {user && (
                         <Link

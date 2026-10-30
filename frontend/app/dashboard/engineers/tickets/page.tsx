@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Camera, ShieldCheck, X } from "lucide-react";
 
 import TicketStatusBadge from "@/app/components/tickets/TicketStatusBadge";
@@ -39,6 +40,7 @@ function readImage(file: File): Promise<TicketImageAttachment> {
 }
 
 export default function EngineerTicketsPage() {
+  const searchParams = useSearchParams();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [selectedImages, setSelectedImages] = useState<
@@ -52,6 +54,23 @@ export default function EngineerTicketsPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
   const [error, setError] = useState("");
+  const searchQuery = searchParams.get("search")?.trim() ?? "";
+  const search = searchQuery.toLowerCase();
+  const filteredTickets = useMemo(
+    () =>
+      tickets.filter((ticket) =>
+        [
+          ticket.ticketNo ?? "",
+          ticket.id,
+          ticket.title,
+          ticket.description,
+          ticket.category,
+          ticket.requester,
+          ticket.status,
+        ].some((value) => value.toLowerCase().includes(search)),
+      ),
+    [tickets, search],
+  );
 
   const loadTickets = useCallback(async () => {
     try {
@@ -270,6 +289,14 @@ export default function EngineerTicketsPage() {
         </p>
       </section>
 
+      {search && (
+        <p className="text-sm text-slate-500" role="status">
+          Showing {filteredTickets.length} result
+          {filteredTickets.length === 1 ? "" : "s"} for &quot;
+          {searchQuery}&quot;
+        </p>
+      )}
+
       {error && (
         <div
           role="alert"
@@ -283,19 +310,20 @@ export default function EngineerTicketsPage() {
         <p className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
           Loading assigned tickets...
         </p>
-      ) : tickets.length === 0 ? (
+      ) : filteredTickets.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center">
           <h2 className="font-semibold text-slate-800">
-            No tickets assigned yet
+            {tickets.length ? "No matching tickets" : "No tickets assigned yet"}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Tickets assigned to your engineer account by an admin will
-            appear here.
+            {tickets.length
+              ? "Try another search term."
+              : "Tickets assigned to your engineer account by an admin will appear here."}
           </p>
         </div>
       ) : (
         <div className="space-y-5">
-          {tickets.map((ticket) => (
+          {filteredTickets.map((ticket) => (
             <article
               key={ticket.id}
               className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"

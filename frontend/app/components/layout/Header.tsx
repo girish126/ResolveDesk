@@ -1,8 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { formatDateTime } from "@/app/lib/utils";
 import {
   Bell,
   Menu,
@@ -50,7 +52,10 @@ function notificationHref(role: AuthUser["role"], ticketId: string | null) {
 
 export default function Header({ user, onMenuClick }: HeaderProps) {
   const [search, setSearch] = useState("");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [open, setOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const {
     notifications,
     loading: notificationsLoading,
@@ -62,6 +67,47 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
   const unreadCount = notifications.filter(
     (notification) => !notification.isRead
   ).length;
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !notificationRef.current?.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const target =
+      user.role === "ADMIN"
+        ? "/dashboard/admin/tickets"
+        : user.role === "USER"
+          ? "/dashboard/user"
+          : "/dashboard/engineers/tickets";
+    const query = search.trim();
+    router.push(
+      query ? `${target}?search=${encodeURIComponent(query)}` : target
+    );
+    setSearch("");
+    setMobileSearchOpen(false);
+  }
 
   async function markAsRead(id: string) {
     try {
@@ -91,22 +137,50 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
           <Menu size={22} />
         </button>
 
-        <div className="relative w-full max-w-md">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-          />
+        <button
+          type="button"
+          onClick={() => setMobileSearchOpen((current) => !current)}
+          aria-label={mobileSearchOpen ? "Close search" : "Open search"}
+          aria-expanded={mobileSearchOpen}
+          aria-controls="header-search-form"
+          className="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 sm:hidden"
+        >
+          <Search size={20} />
+        </button>
+
+        <form
+          id="header-search-form"
+          onSubmit={handleSearchSubmit}
+          role="search"
+          className={
+            mobileSearchOpen
+              ? "absolute left-4 right-4 top-[calc(100%+0.5rem)] z-40 w-auto max-w-none rounded-xl border border-slate-200 bg-white p-2 shadow-lg sm:static sm:block sm:w-full sm:max-w-md sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+              : "hidden sm:relative sm:block sm:w-full sm:max-w-md"
+          }
+        >
+          <button
+            type="submit"
+            aria-label="Search"
+            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-200 hover:text-blue-600"
+          >
+            <Search size={18} />
+          </button>
           <input
+            type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setMobileSearchOpen(false);
+            }}
             placeholder="Search complaints..."
             aria-label="Search complaints"
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
+            autoFocus={mobileSearchOpen}
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
           />
-        </div>
+        </form>
       </div>
 
-      <div className="relative">
+      <div ref={notificationRef} className="relative">
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
@@ -200,7 +274,7 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
 
                         <span className="mt-2 flex items-center gap-1 text-[11px] text-slate-400">
                           <Clock size={12} />
-                          {new Date(notification.createdAt).toLocaleString()}
+                          {formatDateTime(notification.createdAt)}
                         </span>
                       </span>
                     </Link>

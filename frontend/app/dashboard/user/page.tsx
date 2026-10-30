@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Clock3, Plus, Ticket as TicketIcon } from "lucide-react";
 import TicketStatusBadge from "@/app/components/tickets/TicketStatusBadge";
 import useDemoSession from "@/app/hooks/useDemoSession";
@@ -9,6 +10,7 @@ import { userService } from "@/app/services/user.service";
 import type { Ticket } from "@/app/types/ticket";
 
 export default function UserDashboardPage() {
+  const searchParams = useSearchParams();
   const user = useDemoSession();
   const [myTickets, setMyTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,21 @@ export default function UserDashboardPage() {
 
   const resolvedCount = myTickets.filter((ticket) => ticket.status === "Resolved" || ticket.status === "Closed").length;
   const activeCount = myTickets.length - resolvedCount;
+  const search = searchParams.get("search")?.trim().toLowerCase() ?? "";
+  const filteredTickets = useMemo(
+    () =>
+      myTickets.filter((ticket) =>
+        [
+          ticket.ticketNo ?? "",
+          ticket.id,
+          ticket.title,
+          ticket.description,
+          ticket.category,
+          ticket.status,
+        ].some((value) => value.toLowerCase().includes(search)),
+      ),
+    [myTickets, search],
+  );
 
   return (
     <section className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -90,9 +107,9 @@ export default function UserDashboardPage() {
         <p className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
           Loading your tickets...
         </p>
-      ) : myTickets.length ? (
+      ) : filteredTickets.length ? (
         <div className="space-y-3">
-          {myTickets.map((ticket) => (
+          {filteredTickets.map((ticket) => (
             <Link
               key={ticket.id}
               href={`/dashboard/user/${encodeURIComponent(ticket.id)}`}
@@ -120,10 +137,12 @@ export default function UserDashboardPage() {
         <div className="rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center">
           <TicketIcon size={36} className="mx-auto text-slate-300" />
           <h2 className="mt-4 font-semibold text-slate-800">
-            No tickets yet
+            {myTickets.length ? "No matching complaints" : "No tickets yet"}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Raise a ticket and the admin team will review it.
+            {myTickets.length
+              ? "Try another search term."
+              : "Raise a ticket and the admin team will review it."}
           </p>
         </div>
       )}
