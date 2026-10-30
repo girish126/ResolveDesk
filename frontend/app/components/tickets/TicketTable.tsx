@@ -46,8 +46,99 @@ export default function TicketTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/50">
+      <div className="space-y-3 p-3 xl:hidden">
+        {tickets.map((ticket) => (
+          <article
+            key={ticket.id}
+            className="space-y-4 rounded-xl border border-slate-200 p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-all text-[10px] font-bold uppercase tracking-wide text-blue-700">
+                  {ticket.ticketNo ?? ticket.id}
+                </p>
+                <h3 className="mt-1 wrap-break-word font-semibold text-slate-900">
+                  {ticket.title}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">{ticket.category}</p>
+              </div>
+              <TicketStatusBadge status={ticket.status} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-xs">
+              <div className="min-w-0">
+                <p className="text-slate-500">Requester</p>
+                <p className="mt-1 truncate font-medium text-slate-800">{ticket.requester}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Priority</p>
+                <span className={`mt-1 inline-flex rounded-full px-2 py-1 font-semibold ${priorityStyles[ticket.priority]}`}>
+                  {ticket.priority}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-slate-500">Assigned engineer</p>
+                <p className="mt-1 truncate font-medium text-slate-800">
+                  {ticket.assignedEngineer || "Unassigned"}
+                </p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-slate-500">Created</p>
+                <p className="mt-1 truncate font-medium text-slate-800">{ticket.createdAt}</p>
+              </div>
+            </div>
+
+            {onAssign && (
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                  Assign engineer
+                </span>
+                <select
+                  aria-label={`Assign ${ticket.id} to engineer`}
+                  value={ticket.assignedEngineerId ?? ""}
+                  onChange={(event) => event.target.value && onAssign(ticket, event.target.value)}
+                  className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="">Choose engineer</option>
+                  {engineers.map((engineer) => (
+                    <option key={engineer.id} value={engineer.id}>{engineer.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+              <Link
+                href={`${basePath}/${encodeURIComponent(ticket.id)}`}
+                className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+              >
+                <Eye size={16} /> View
+              </Link>
+              {onShare && ticket.assignedEngineerId && (
+                <button
+                  type="button"
+                  onClick={() => onShare(ticket)}
+                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-emerald-200 px-3 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
+                >
+                  <MessageCircle size={16} /> Share
+                </button>
+              )}
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={() => onEdit(ticket)}
+                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 transition hover:bg-amber-50 hover:text-amber-700"
+                >
+                  <Pencil size={16} /> Edit
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto xl:block">
         <table className="w-full min-w-225 text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>

@@ -16,6 +16,7 @@ import {
   Clock,
   ArrowRight,
   LoaderCircle,
+  X,
 } from "lucide-react";
 import type { AuthUser } from "@/app/types/auth";
 import useNotifications from "@/app/hooks/useNotifications";
@@ -55,6 +56,7 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const {
     notifications,
@@ -93,6 +95,31 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!mobileSearchOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !searchRef.current?.contains(event.target)
+      ) {
+        setMobileSearchOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileSearchOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileSearchOpen]);
+
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const target =
@@ -126,58 +153,60 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-20 items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-slate-200 bg-white/95 px-3 backdrop-blur sm:h-20 sm:gap-4 sm:px-6 lg:px-8">
+      <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-3">
         <button
           type="button"
           onClick={onMenuClick}
           aria-label="Open navigation"
-          className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+          className="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden"
         >
           <Menu size={22} />
         </button>
 
-        <button
-          type="button"
-          onClick={() => setMobileSearchOpen((current) => !current)}
-          aria-label={mobileSearchOpen ? "Close search" : "Open search"}
-          aria-expanded={mobileSearchOpen}
-          aria-controls="header-search-form"
-          className="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 sm:hidden"
-        >
-          <Search size={20} />
-        </button>
-
-        <form
-          id="header-search-form"
-          onSubmit={handleSearchSubmit}
-          role="search"
-          className={
-            mobileSearchOpen
-              ? "absolute left-4 right-4 top-[calc(100%+0.5rem)] z-40 w-auto max-w-none rounded-xl border border-slate-200 bg-white p-2 shadow-lg sm:static sm:block sm:w-full sm:max-w-md sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
-              : "hidden sm:relative sm:block sm:w-full sm:max-w-md"
-          }
+        <div
+          ref={searchRef}
+          className="flex min-w-0 flex-1 items-center"
         >
           <button
-            type="submit"
-            aria-label="Search"
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-200 hover:text-blue-600"
+            type="button"
+            onClick={() => setMobileSearchOpen((current) => !current)}
+            aria-label={mobileSearchOpen ? "Close search" : "Open search"}
+            aria-expanded={mobileSearchOpen}
+            aria-controls="header-search-form"
+            className="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:hidden"
           >
-            <Search size={18} />
+            {mobileSearchOpen ? <X size={20} /> : <Search size={20} />}
           </button>
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") setMobileSearchOpen(false);
-            }}
-            placeholder="Search complaints..."
-            aria-label="Search complaints"
-            autoFocus={mobileSearchOpen}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
-          />
-        </form>
+
+          <form
+            id="header-search-form"
+            onSubmit={handleSearchSubmit}
+            role="search"
+            className={
+              mobileSearchOpen
+                ? "absolute left-3 right-3 top-[calc(100%+0.5rem)] z-40 w-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg md:static md:w-full md:max-w-md md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none"
+                : "hidden md:relative md:block md:w-full md:max-w-md"
+            }
+          >
+            <button
+              type="submit"
+              aria-label="Search"
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-200 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <Search size={18} />
+            </button>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search complaints..."
+              aria-label="Search complaints"
+              autoFocus={mobileSearchOpen}
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 sm:rounded-xl"
+            />
+          </form>
+        </div>
       </div>
 
       <div ref={notificationRef} className="relative">
@@ -186,7 +215,7 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
           onClick={() => setOpen((current) => !current)}
           aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
           aria-expanded={open}
-          className="relative rounded-xl border border-slate-200 p-3 text-slate-600 transition hover:bg-slate-50"
+          className="relative shrink-0 rounded-xl border border-slate-200 p-2.5 text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-3"
         >
           <Bell size={19} />
           {unreadCount > 0 && (

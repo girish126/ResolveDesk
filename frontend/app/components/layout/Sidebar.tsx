@@ -86,25 +86,25 @@ export default function Sidebar({
           type="button"
           aria-label="Close navigation"
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-slate-950/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[min(18rem,88vw)] flex-col border-r border-slate-800 bg-slate-950 text-white shadow-2xl transition-transform duration-300 lg:translate-x-0 lg:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-20 items-center justify-between border-b border-slate-100 px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white">
-              <MessageSquareWarning size={22} />
+        <div className="flex h-20 items-center justify-between border-b border-white/10 px-5">
+          <Link href="/" className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-950/40">
+              <MessageSquareWarning size={21} />
             </span>
-            <span>
-              <span className="block text-lg font-bold text-slate-900">
+            <span className="min-w-0">
+              <span className="block truncate text-lg font-bold tracking-tight text-white">
                 ResolveDesk
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="block truncate text-[11px] text-slate-400">
                 Complaint Management
               </span>
             </span>
@@ -115,19 +115,19 @@ export default function Sidebar({
               type="button"
               aria-label="Close sidebar"
               onClick={onClose}
-              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+              className="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 lg:hidden"
             >
               <X size={20} />
             </button>
           )}
         </div>
 
-        <div className="px-4 pt-6">
-          <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <div className="px-3 pt-7">
+          <p className="px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
             Workspace
           </p>
 
-          <nav className="mt-3 space-y-1">
+          <nav aria-label="Workspace navigation" className="mt-3 space-y-1.5">
             {navigation.map((item) => {
               const Icon = item.icon;
               const active =
@@ -140,13 +140,14 @@ export default function Sidebar({
                   key={item.href}
                   href={item.href}
                   onClick={onClose}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
+                  aria-current={active ? "page" : undefined}
+                  className={`group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
                     active
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      ? "bg-blue-500 text-white shadow-md shadow-blue-950/30"
+                      : "text-slate-400 hover:bg-white/8 hover:text-white"
                   }`}
                 >
-                  <Icon size={19} />
+                  <Icon size={18} className={active ? "text-white" : "text-slate-500 transition group-hover:text-blue-300"} />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -154,9 +155,9 @@ export default function Sidebar({
           </nav>
         </div>
 
-        <div className="mt-auto border-t border-slate-100 p-4">
-          <div className="mt-4 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-700">
+        <div className="mt-auto border-t border-white/10 p-3">
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-white/8 bg-white/5 p-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-400/15 font-semibold text-blue-200 ring-1 ring-blue-300/20">
               {user?.name
                 ?.split(/\s+/)
                 .map((part) => part[0])
@@ -165,17 +166,17 @@ export default function Sidebar({
                 .toUpperCase() ?? "RD"}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-900">
+              <p className="truncate text-sm font-semibold text-white">
                 {user?.name ?? "ResolveDesk"}
               </p>
-              <p className="text-xs text-slate-500">{roleLabel}</p>
+              <p className="mt-0.5 text-xs text-slate-400">{roleLabel}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => void handleLogout()}
             disabled={loggingOut}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-400 transition hover:bg-red-500/10 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:opacity-60"
           >
             <LogOut size={16} />
             {loggingOut ? "Signing out…" : "Sign out"}

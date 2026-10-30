@@ -3,7 +3,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Ticket as TicketIcon } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Ticket as TicketIcon } from "lucide-react";
 
 import TicketFilters, {
   type TicketFilterPriority,
@@ -157,42 +158,48 @@ export default function AdminTicketsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-
-      {/* Page heading */}
-      <div>
-        <p className="text-sm font-medium text-blue-600">
-          ADMIN WORKSPACE
-        </p>
-
-        <h1 className="mt-2 text-3xl font-bold text-slate-900">
-          All Tickets
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-500">
-          Search, filter, assign, and share submitted tickets.
-        </p>
+    <div className="mx-auto max-w-7xl space-y-5 p-4 sm:space-y-7 sm:p-6 lg:p-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <Link href="/dashboard/admin" className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-blue-700">
+            <ArrowLeft size={14} /> Dashboard
+          </Link>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">
+            Admin workspace
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+            Ticket queue
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            Search incoming complaints, assign the right engineer, and keep
+            every request moving.
+          </p>
+        </div>
+        <span className="inline-flex min-h-10 items-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 shadow-sm sm:self-auto">
+          <TicketIcon size={16} className="text-blue-600" />
+          {loading ? "Loading queue" : `${tickets.length} total tickets`}
+        </span>
       </div>
 
       {/* Ticket statistics */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-500">Tickets shown</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">
+      <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tickets shown</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
             {filteredTickets.length}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-500">Open</p>
-          <p className="mt-2 text-2xl font-bold text-blue-600">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Open</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-blue-800">
             {tickets.filter((ticket) => ticket.status === "Open").length}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-500">Resolved</p>
-          <p className="mt-2 text-2xl font-bold text-emerald-600">
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Resolved</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-emerald-800">
             {tickets.filter(
               (ticket) => ticket.status === "Resolved"
             ).length}

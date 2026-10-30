@@ -3,7 +3,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Camera, ShieldCheck, X } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  Camera,
+  Clock3,
+  Package,
+  ShieldCheck,
+  Ticket as TicketIcon,
+  Wrench,
+  X,
+} from "lucide-react";
 
 import TicketStatusBadge from "@/app/components/tickets/TicketStatusBadge";
 import TicketAttachments from "@/app/components/tickets/TicketAttachments";
@@ -71,6 +81,12 @@ export default function EngineerTicketsPage() {
       ),
     [tickets, search],
   );
+  const assignedCount = tickets.filter(
+    (ticket) => ticket.status === "Assigned",
+  ).length;
+  const inProgressCount = tickets.filter(
+    (ticket) => ticket.status === "In Progress",
+  ).length;
 
   const loadTickets = useCallback(async () => {
     try {
@@ -273,21 +289,67 @@ export default function EngineerTicketsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <section>
-        <p className="text-sm font-semibold text-blue-600">
-          ENGINEER WORKSPACE
-        </p>
-
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-          Assigned Tickets
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-500">
-          Work on tickets assigned to your account and send the user a
-          completion response.
-        </p>
+    <main className="mx-auto max-w-7xl space-y-5 p-4 sm:space-y-7 sm:p-6 lg:p-8">
+      <section className="relative isolate overflow-hidden rounded-3xl bg-linear-to-br from-slate-950 via-indigo-950 to-blue-900 p-5 text-white shadow-xl shadow-indigo-950/10 sm:p-8">
+        <div aria-hidden="true" className="absolute -right-16 -top-24 -z-10 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl" />
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
+            <p className="inline-flex items-center gap-2 rounded-full border border-indigo-200/20 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-200">
+              <Wrench size={13} /> Engineer workspace
+            </p>
+            <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
+              Your work queue
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-indigo-100/80 sm:text-base">
+              Review assigned complaints, record repair progress, and send a
+              clear completion update when the work is done.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/engineers/spare-parts"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:w-auto"
+          >
+            <Package size={17} /> Request a part <ArrowRight size={15} />
+          </Link>
+        </div>
       </section>
+
+      <section aria-label="Work queue summary" className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+        {[
+          { label: "Assigned to you", value: tickets.length, helper: "Active tickets in your queue", icon: TicketIcon, color: "bg-blue-50 text-blue-700" },
+          { label: "Ready to start", value: assignedCount, helper: "Begin work when you're ready", icon: Clock3, color: "bg-amber-50 text-amber-700" },
+          { label: "In progress", value: inProgressCount, helper: "Need a completion update", icon: Wrench, color: "bg-indigo-50 text-indigo-700" },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <article key={item.label} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/50 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">{item.label}</p>
+                  <p className="mt-2 text-3xl font-bold tracking-tight text-slate-950">{loading ? "—" : item.value}</p>
+                </div>
+                <span className={`rounded-xl p-2.5 ${item.color}`}><Icon size={19} /></span>
+              </div>
+              <p className="mt-3 text-xs text-slate-500">{item.helper}</p>
+            </article>
+          );
+        })}
+      </section>
+
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">Assigned complaints</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {search
+              ? `${filteredTickets.length} result${filteredTickets.length === 1 ? "" : "s"} for “${searchQuery}”`
+              : "Prioritize your queue and keep each requester informed."}
+          </p>
+        </div>
+        <span className="mt-2 inline-flex items-center gap-2 self-start rounded-lg bg-white px-3 py-2 text-xs font-medium text-slate-500 ring-1 ring-slate-200 sm:mt-0 sm:self-auto">
+          <TicketIcon size={14} className="text-indigo-600" />
+          {loading ? "Loading" : `${filteredTickets.length} in view`}
+        </span>
+      </div>
 
       {search && (
         <p className="text-sm text-slate-500" role="status">
@@ -307,15 +369,20 @@ export default function EngineerTicketsPage() {
       )}
 
       {loading ? (
-        <p className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-          Loading assigned tickets...
-        </p>
+        <div className="space-y-3" aria-label="Loading assigned tickets">
+          {[0, 1].map((item) => (
+            <div key={item} className="h-48 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+          ))}
+        </div>
       ) : filteredTickets.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center">
-          <h2 className="font-semibold text-slate-800">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center sm:px-8">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+            <TicketIcon size={24} />
+          </span>
+          <h3 className="mt-4 font-semibold text-slate-900">
             {tickets.length ? "No matching tickets" : "No tickets assigned yet"}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          </h3>
+          <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">
             {tickets.length
               ? "Try another search term."
               : "Tickets assigned to your engineer account by an admin will appear here."}
@@ -326,28 +393,31 @@ export default function EngineerTicketsPage() {
           {filteredTickets.map((ticket) => (
             <article
               key={ticket.id}
-              className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+              className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/50 transition hover:border-indigo-200 hover:shadow-md sm:space-y-5 sm:p-6"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold text-blue-600">
+                <div className="min-w-0 flex-1">
+                  <p className="break-all text-[11px] font-bold uppercase tracking-wide text-indigo-700">
                     {ticket.ticketNo ?? ticket.id}
                   </p>
 
-                  <h2 className="mt-1 text-lg font-bold text-slate-900">
+                  <h3 className="mt-1 wrap-break-word text-lg font-bold tracking-tight text-slate-950 sm:text-xl">
                     {ticket.title}
-                  </h2>
+                  </h3>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    {ticket.category} · {ticket.priority} priority ·
-                    Requested by {ticket.requester}
+                  <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 sm:text-sm">
+                    <span>{ticket.category}</span>
+                    <span className="text-slate-300">•</span>
+                    <span>{ticket.priority} priority</span>
+                    <span className="text-slate-300">•</span>
+                    <span>Requested by {ticket.requester}</span>
                   </p>
                 </div>
 
                 <TicketStatusBadge status={ticket.status} />
               </div>
 
-              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
+              <p className="whitespace-pre-wrap wrap-break-word rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-700 sm:p-4">
                 {ticket.description}
               </p>
 

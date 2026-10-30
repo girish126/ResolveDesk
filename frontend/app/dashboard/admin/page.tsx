@@ -1,6 +1,4 @@
-
 "use client";
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -169,39 +167,43 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8">
-      {/* Dashboard heading */}
-      <header>
-        <p className="text-sm font-semibold tracking-wide text-blue-600">
-          ADMIN WORKSPACE
-        </p>
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:space-y-8 sm:p-6 lg:p-8">
+      <header className="relative isolate overflow-hidden rounded-3xl bg-linear-to-br from-slate-950 via-slate-900 to-blue-950 p-5 text-white shadow-xl shadow-slate-900/10 sm:p-8 lg:p-10">
+        <div aria-hidden="true" className="absolute -right-20 -top-32 -z-10 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl" />
+        <div aria-hidden="true" className="absolute -bottom-28 right-1/4 -z-10 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <div className="max-w-2xl">
+            <p className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-blue-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Admin workspace
+            </p>
+            <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
+              Dashboard overview
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
+              Keep complaints moving, support your engineers, and stay on top
+              of the work that needs attention.
+            </p>
+          </div>
 
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-          Dashboard Overview
-        </h1>
-
-        <p className="mt-2 text-slate-500">
-          Monitor complaints and your support team&apos;s progress.
-        </p>
-
-        {/* Ticket management and WhatsApp workflow shortcuts */}
-        <div className="mt-6 flex flex-wrap gap-3">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
           <Link
             href="/dashboard/admin/tickets"
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <Ticket size={18} />
-            Manage & Assign Tickets
+            Manage tickets
             <ArrowRight size={16} />
           </Link>
 
           <Link
             href="/dashboard/admin/tickets"
-            className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <MessageCircle size={18} />
-            Assign & Share on WhatsApp
+            Assign and share
           </Link>
+          </div>
         </div>
       </header>
 
@@ -216,7 +218,7 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Summary cards */}
-      <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Complaint summary" className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <StatCard
           title="Total Complaints"
           value={loading ? "…" : summary.total}
@@ -251,15 +253,15 @@ export default function AdminDashboardPage() {
       </section>
 
       {/* Spare-part requests */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/50 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-              <Package size={18} className="text-blue-600" />
+              <span className="rounded-lg bg-blue-50 p-2 text-blue-600"><Package size={17} /></span>
               Spare-part requests
             </p>
 
-            <p className="mt-2 text-2xl font-bold text-slate-900">
+            <p className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               {sparePartsLoading ? "…" : pendingSpareParts.length}
               <span className="ml-2 text-sm font-normal text-slate-500">
                 awaiting review
@@ -269,7 +271,7 @@ export default function AdminDashboardPage() {
 
           <Link
             href="/dashboard/admin/spare-parts"
-            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+            className="inline-flex min-h-10 items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             Review requests
           </Link>
@@ -329,8 +331,8 @@ export default function AdminDashboardPage() {
       </section>
 
       {/* Ticket status and support team */}
-      <section className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 lg:col-span-2">
+      <section className="grid gap-4 lg:grid-cols-3 lg:gap-6">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/50 sm:p-6 lg:col-span-2">
           <h2 className="text-lg font-bold text-slate-900">
             Ticket status
           </h2>
@@ -369,7 +371,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/50 sm:p-6">
           <h2 className="text-lg font-bold text-slate-900">
             Support team
           </h2>
@@ -403,7 +405,7 @@ export default function AdminDashboardPage() {
 
           <Link
             href="/dashboard/admin/tickets"
-            className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="mt-6 flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50/60 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             View all tickets
             <ArrowRight size={16} />
